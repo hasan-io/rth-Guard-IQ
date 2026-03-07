@@ -390,7 +390,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fas fa-shield-alt"></i>
             </div>
             <h2>Create Account</h2>
-            <p>Join DefSec Security Platform</p>
+            <p>Join Guard IQ Security Platform</p>
         </div>
         
         <?php if (!empty($errors)): ?>

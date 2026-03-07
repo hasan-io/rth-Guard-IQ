@@ -836,7 +836,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div class="sidebar-header">
             <h3 class="mb-0">
                 <i class="fas fa-shield-alt text-primary me-2"></i>
-                <span class="fw-bold">DefSec</span>
+                <span class="fw-bold">Guard IQ</span>
             </h3>
             <p class="text-muted mb-0 small">Security Dashboard</p>
         </div>

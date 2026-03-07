@@ -278,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="brand-logo">
                 <i class="fas fa-shield-alt"></i>
             </div>
-            <h2>DefSec Security</h2>
+            <h2>Guard IQ Security</h2>
             <p>Sign in to your security dashboard</p>
         </div>
         

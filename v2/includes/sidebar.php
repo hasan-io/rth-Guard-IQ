@@ -6,7 +6,7 @@
     <div class="sidebar-header">
         <div class="logo">
             <i class="fas fa-shield-alt"></i>
-            <span class="logo-text">Defsec</span>
+            <span class="logo-text">Guard IQ</span>
             <span class="version">v<?= APP_VERSION ?></span>
         </div>
         <button class="sidebar-toggle" id="sidebarToggle">
