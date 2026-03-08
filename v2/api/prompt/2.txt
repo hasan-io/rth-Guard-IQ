@@ -31,11 +31,11 @@ Users:
 
 admin (id=1)
 
-yashdoifode (id=2)
+hasan (id=2)
 Websites:
 
 DefSec Main (id=1, user_id=1)
 
-Yash Blog (id=2, user_id=2)
+hasan Blog (id=2, user_id=2)
 
 When updating any table or API, make sure to link user_id and website_id properly.
