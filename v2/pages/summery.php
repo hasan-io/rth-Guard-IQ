@@ -110,12 +110,18 @@ try {
     
     // Recent attacks (last 10)
     $recentAttacks = $pdo->prepare("
-        SELECT attack_type, severity, ip_address, timestamp, request_url 
-        FROM attack_logs 
-        WHERE user_id = ? AND website_id = ?
-        ORDER BY timestamp DESC 
-        LIMIT 10
-    ");
+    SELECT 
+        al.attack_type, al.severity, al.ip_address, al.timestamp, 
+        al.request_url, al.attack_payload, al.user_agent,
+        l.country, l.is_vpn, l.is_proxy, l.ISP, l.digital_dna
+    FROM attack_logs al
+    LEFT JOIN logs l ON al.ip_address = l.ip 
+        AND l.user_id = al.user_id 
+        AND l.website_id = al.website_id
+    WHERE al.user_id = ? AND al.website_id = ?
+    ORDER BY al.timestamp DESC 
+    LIMIT 10
+");
     $recentAttacks->execute([$userId, $websiteId]);
     $recentData = $recentAttacks->fetchAll();
     
@@ -153,8 +159,49 @@ try {
     margin-bottom: .25rem !important;
     color: white;
 }
+/* Refresh Indicator */
+#refreshIndicator {
+    position: fixed;
+    top: 15px;
+    right: 80px;
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30,30,30,0.9);
+    border: 1px solid #444;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    color: #aaa;
+    transition: all 0.3s ease;
+}
+
+#refreshDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    transition: all 0.3s ease;
+}
+
+#refreshIndicator.refreshing #refreshDot {
+    background: #ffc107;
+    animation: blinkDot 0.5s infinite;
+}
+
+@keyframes blinkDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+}
 
 </style>
+
+<div id="refreshIndicator">
+    <div id="refreshDot"></div>
+    <span id="refreshText">Live</span>
+</div>
+
 <div class="row g-4 fade-in">
     <!-- Page Header -->
     <div class="col-12">
@@ -351,17 +398,28 @@ try {
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="block-list.php?ip=<?php echo urlencode($attack['ip_address'] ?? ''); ?>&website_id=<?php echo $websiteId; ?>" 
-                                           class="btn btn-outline-danger" title="Block IP">
-                                            <i class="fas fa-ban"></i>
-                                        </a>
+                                        <button type="button" class="btn btn-outline-danger" 
+        onclick="blockIP('<?php echo addslashes($attack['ip_address'] ?? ''); ?>', this)"
+        title="Block IP">
+    <i class="fas fa-ban"></i>
+</button>
                                         <button type="button" class="btn btn-outline-info" 
-                                                onclick="showAttackDetails('<?php echo htmlspecialchars($attack['attack_type'] ?? ''); ?>', 
-                                                                          '<?php echo htmlspecialchars($attack['ip_address'] ?? ''); ?>',
-                                                                          '<?php echo htmlspecialchars($attack['request_url'] ?? ''); ?>')"
-                                                title="View Details">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+        onclick="showAttackDetails(
+            '<?php echo addslashes($attack['attack_type'] ?? ''); ?>',
+            '<?php echo addslashes($attack['ip_address'] ?? ''); ?>',
+            '<?php echo addslashes($attack['request_url'] ?? ''); ?>',
+            '<?php echo addslashes($attack['severity'] ?? ''); ?>',
+            '<?php echo addslashes($attack['country'] ?? 'Unknown'); ?>',
+            '<?php echo addslashes($attack['user_agent'] ?? ''); ?>',
+            '<?php echo addslashes($attack['ISP'] ?? 'Unknown'); ?>',
+            '<?php echo (int)($attack['is_vpn'] ?? 0); ?>',
+            '<?php echo (int)($attack['is_proxy'] ?? 0); ?>',
+            '<?php echo addslashes($attack['attack_payload'] ?? ''); ?>',
+            '<?php echo date('d M Y H:i:s', strtotime($attack['timestamp'] ?? 'now')); ?>'
+        )"
+        title="View Details">
+    <i class="fas fa-eye"></i>
+</button>
                                     </div>
                                 </td>
                             </tr>
@@ -447,84 +505,303 @@ try {
 </div>
 
 <!-- Attack Details Modal -->
+<!-- Attack Details Modal -->
 <div class="modal fade" id="attackDetailsModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark border-secondary">
             <div class="modal-header border-secondary">
-                <h5 class="modal-title">Attack Details</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-shield-exclamation me-2 text-warning"></i>Attack Details
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label text-muted">Attack Type</label>
-                    <div class="form-control bg-dark text-light" id="modalAttackType"></div>
+                <!-- Severity Badge -->
+                <div class="text-center mb-3">
+                    <span id="modalSeverityBadge" class="badge fs-6 px-3 py-2"></span>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted">IP Address</label>
-                    <div class="form-control bg-dark text-light" id="modalIpAddress"></div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted">Request URL</label>
-                    <div class="form-control bg-dark text-light" style="height: auto; min-height: 80px; font-family: monospace; font-size: 12px;" 
-                         id="modalRequestUrl"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small">Attack Type</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1" id="modalAttackType"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">Timestamp</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1" id="modalTimestamp"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">IP Address</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1 font-monospace" id="modalIpAddress"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">Country</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1" id="modalCountry"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">ISP</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1" id="modalISP"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">Flags</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1" id="modalFlags"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small">User Agent</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1 small font-monospace" id="modalUserAgent"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small">Request URL</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1 small font-monospace" id="modalRequestUrl"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted small">Attack Payload</label>
+                        <div class="bg-secondary bg-opacity-25 rounded p-2 mt-1 small font-monospace text-warning" id="modalPayload"></div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer border-secondary">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <a href="#" class="btn btn-danger" id="modalBlockBtn">
-                    <i class="fas fa-ban me-1"></i> Block This IP
+                <a href="#" id="modalWhoisBtn" target="_blank" class="btn btn-outline-info">
+                    <i class="fas fa-search me-1"></i> WHOIS
                 </a>
+                <button type="button" class="btn btn-danger" id="modalBlockBtn" onclick="blockIPFromModal()">
+                    <i class="fas fa-ban me-1"></i> Block This IP
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Function to show attack details
-    function showAttackDetails(type, ip, url) {
-        $('#modalAttackType').text(type);
-        $('#modalIpAddress').text(ip);
-        $('#modalRequestUrl').text(url);
-        $('#modalBlockBtn').attr('href', 'block-list.php?ip=' + encodeURIComponent(ip) + '&website_id=<?php echo $websiteId; ?>');
+    let currentModalIP = '';
+    let lastAttackId = 0;
+    let sirenTimeout = null;
+
+    // Page load pe current latest attack ID fetch karo
+    // Taaki sirf NAYE attacks pe alert aaye, purane pe nahi
+    $.ajax({
+        url: '../api/get-latest-attack.php?last_id=0',
+        dataType: 'json',
+        success: function(res) {
+            if (res.success && res.new_attack) {
+                lastAttackId = res.id;
+            }
+        }
+    });
+
+    // =====================
+    // ATTACK ALERT SYSTEM
+    // =====================
+    function playAlertAndNotify(attack) {
+        const siren = new Audio('../assets/siren.mp3');
+        siren.play().catch(function() {
+            console.log('Audio play blocked by browser');
+        });
+
+        showAttackAlert(attack);
+
+        sirenTimeout = setTimeout(function() {
+            siren.pause();
+            siren.currentTime = 0;
+            closeAttackAlert();
+        }, 5000);
+    }
+
+    function showAttackAlert(attack) {
+        $('#attackAlertPopup').remove();
+
+        const severityColors = {
+            'Critical': '#dc3545',
+            'High': '#fd7e14',
+            'Medium': '#ffc107',
+            'Info': '#0dcaf0'
+        };
+        const color = severityColors[attack.severity] || '#6c757d';
+
+        const popup = `
+        <div id="attackAlertPopup" style="
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 340px;
+            background: #1e1e1e;
+            border: 2px solid ${color};
+            border-radius: 10px;
+            padding: 16px 18px;
+            z-index: 99999;
+            box-shadow: 0 0 25px ${color}88;
+            animation: slideInAlert 0.3s ease;
+        ">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:1.3rem;">🚨</span>
+                    <strong style="color:${color}; font-size:0.95rem;">Attack Detected!</strong>
+                </div>
+                <button onclick="closeAttackAlert()" style="
+                    background:none; border:none; color:#aaa;
+                    font-size:1.1rem; cursor:pointer; line-height:1;
+                ">✕</button>
+            </div>
+            <div style="font-size:0.85rem; color:#e9ecef; line-height:1.6;">
+                <div><span style="color:#aaa;">Type:</span> <strong style="color:${color};">${attack.attack_type}</strong></div>
+                <div><span style="color:#aaa;">Severity:</span> ${attack.severity}</div>
+                <div><span style="color:#aaa;">IP:</span> <code style="color:#fff;">${attack.ip}</code></div>
+                <div><span style="color:#aaa;">Time:</span> ${attack.time}</div>
+            </div>
+            <a href="security-dashboard.php" style="
+                display:block;
+                margin-top:12px;
+                padding: 8px;
+                background: ${color};
+                color: #fff;
+                text-align:center;
+                border-radius:6px;
+                text-decoration:none;
+                font-size:0.85rem;
+                font-weight:600;
+            ">
+                <i class="fas fa-shield-alt me-1"></i> Go to Security Dashboard
+            </a>
+        </div>`;
+
+        $('body').append(popup);
+    }
+
+    function closeAttackAlert() {
+        clearTimeout(sirenTimeout);
+        $('#attackAlertPopup').fadeOut(300, function() {
+            $(this).remove();
+        });
+    }
+
+    // =====================
+    // AUTO REFRESH - har 15 second me check
+    // =====================
+    function checkNewAttacks() {
+    $('#refreshIndicator').addClass('refreshing');
+    $('#refreshText').text('Checking...');
+
+    $.ajax({
+        url: '../api/get-latest-attack.php?last_id=' + lastAttackId,
+        dataType: 'json',
+        success: function(res) {
+            $('#refreshIndicator').removeClass('refreshing');
+
+            if (res.success && res.new_attack) {
+                lastAttackId = res.id;
+                $('#refreshDot').css('background', '#dc3545');
+                $('#refreshText').text('⚠️ New Attack!');
+                playAlertAndNotify(res);
+                setTimeout(function() {
+                    location.reload();
+                }, 5500);
+            } else {
+                $('#refreshDot').css('background', '#28a745');
+                $('#refreshText').text('Live · ' + new Date().toLocaleTimeString());
+            }
+        },
+        error: function() {
+            $('#refreshIndicator').removeClass('refreshing');
+            $('#refreshDot').css('background', '#dc3545');
+            $('#refreshText').text('Error');
+        }
+    });
+}
+    setInterval(checkNewAttacks, 15000);
+
+    // =====================
+    // EXISTING FUNCTIONS
+    // =====================
+    function showAttackDetails(type, ip, url, severity, country, ua, isp, isVpn, isProxy, payload, timestamp) {
+        currentModalIP = ip;
+
+        const severityColors = {
+            'Critical': 'danger', 'High': 'warning',
+            'Medium': 'info', 'Info': 'secondary'
+        };
+        const color = severityColors[severity] || 'secondary';
+        $('#modalSeverityBadge')
+            .text(severity)
+            .removeClass()
+            .addClass(`badge fs-6 px-3 py-2 bg-${color}`);
+
+        $('#modalAttackType').text(type || 'Unknown');
+        $('#modalTimestamp').text(timestamp || 'Unknown');
+        $('#modalIpAddress').text(ip || 'Unknown');
+        $('#modalCountry').text(country || 'Unknown');
+        $('#modalISP').text(isp || 'Unknown');
+        $('#modalUserAgent').text(ua || 'Unknown');
+        $('#modalRequestUrl').text(url || 'N/A');
+        $('#modalPayload').text(payload || 'No payload captured');
+        $('#modalWhoisBtn').attr('href', 'https://whois.domaintools.com/' + ip);
+
+        let flags = [];
+        if (parseInt(isVpn)) flags.push('<span class="badge bg-warning text-dark me-1">⚠️ VPN</span>');
+        if (parseInt(isProxy)) flags.push('<span class="badge bg-warning text-dark me-1">⚠️ Proxy</span>');
+        if (!flags.length) flags.push('<span class="badge bg-success">✅ Clean</span>');
+        $('#modalFlags').html(flags.join(''));
+
         new bootstrap.Modal(document.getElementById('attackDetailsModal')).show();
     }
-    
-    // Handle website switching
+
+    function blockIP(ip, btn) {
+        if (!confirm('Block IP: ' + ip + '?')) return;
+
+        $(btn).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+        $.ajax({
+            url: '../api/block-ip.php',
+            method: 'POST',
+            data: { ip: ip, website_id: <?php echo $websiteId; ?> },
+            dataType: 'json',
+            success: function(res) {
+                if (res.success) {
+                    $(btn).removeClass('btn-outline-danger')
+                          .addClass('btn-danger')
+                          .html('<i class="fas fa-check"></i>');
+                    alert('✅ ' + res.message);
+                } else {
+                    $(btn).prop('disabled', false).html('<i class="fas fa-ban"></i>');
+                    alert('⚠️ ' + res.message);
+                }
+            },
+            error: function() {
+                $(btn).prop('disabled', false).html('<i class="fas fa-ban"></i>');
+                alert('❌ Failed to block IP. Try again.');
+            }
+        });
+    }
+
+    function blockIPFromModal() {
+        if (!currentModalIP) return;
+        const btn = document.getElementById('modalBlockBtn');
+        blockIP(currentModalIP, btn);
+    }
+
+    // Website switching
     <?php if (isset($_GET['switch_website'])): ?>
         $.ajax({
             url: 'api/switch-website.php',
             method: 'POST',
             data: { website_id: <?php echo intval($_GET['switch_website']); ?> },
-            success: function(response) {
-                window.location.reload();
-            },
+            success: function() { window.location.reload(); },
             error: function() {
                 alert('Failed to switch website');
                 window.location.href = window.location.pathname;
             }
         });
     <?php endif; ?>
-    
-    // Auto-refresh every 30 seconds
-    $(document).ready(function() {
-        console.log('Dashboard loaded for website ID: <?php echo $websiteId; ?>');
-        
-        setInterval(function() {
-            $.ajax({
-                url: 'api/dashboard-stats.php?website_id=<?php echo $websiteId; ?>',
-                method: 'GET',
-                success: function(data) {
-                    if (data.success) {
-                        // Update stats if needed
-                        console.log('Dashboard stats refreshed');
-                    }
-                },
-                error: function() {
-                    console.log('Failed to refresh dashboard stats');
-                }
-            });
-        }, 30000);
-    });
+
+    // Slide in animation
+    const alertStyle = document.createElement('style');
+    alertStyle.textContent = `
+        @keyframes slideInAlert {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    `;
+    document.head.appendChild(alertStyle);
 </script>
 
 <?php

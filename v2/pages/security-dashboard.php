@@ -42,7 +42,7 @@ if (!$isLoggedIn) {
 // Database connection
 $db = $pdo; // Use the existing connection from db.php
 
-// If website_id not in session, get the user's default website
+// If website_id not in session, get the user's default website 
 if (!$website_id || $website_id == 0) {
     try {
         $defaultWebsite = $db->prepare("SELECT id FROM websites WHERE user_id = ? ORDER BY id ASC LIMIT 1");
@@ -1379,6 +1379,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </div>
         </div>
     </div>
+
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
