@@ -637,5 +637,40 @@
             });
         });
     </script>
+
+<script>
+// GPS Location capture
+function captureGPSLocation() {
+    if (!navigator.geolocation) return;
+    
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            // User ne allow kiya — save karo
+            fetch('/defsec/v2/api/save-gps.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    gps_lat: position.coords.latitude,
+                    gps_lng: position.coords.longitude,
+                    gps_accuracy: position.coords.accuracy
+                })
+            });
+        },
+        function(error) {
+            // User ne deny kiya — kuch nahi karo, IP-based rahega
+            console.log('Location denied, using IP-based');
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+}
+
+// Page load hone ke 2 sec baad maango
+setTimeout(captureGPSLocation, 2000);
+</script>
+
 </body>
 </html>

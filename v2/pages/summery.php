@@ -576,10 +576,9 @@ try {
 <script>
     let currentModalIP = '';
     let lastAttackId = 0;
-    let sirenTimeout = null;
+    let activeSiren = null;
 
-    // Page load pe current latest attack ID fetch karo
-    // Taaki sirf NAYE attacks pe alert aaye, purane pe nahi
+    // Page load pe latest attack ID set karo
     $.ajax({
         url: '../api/get-latest-attack.php?last_id=0',
         dataType: 'json',
@@ -594,18 +593,16 @@ try {
     // ATTACK ALERT SYSTEM
     // =====================
     function playAlertAndNotify(attack) {
-        const siren = new Audio('../assets/siren.mp3');
-        siren.play().catch(function() {
+        if (activeSiren) {
+            activeSiren.pause();
+            activeSiren.currentTime = 0;
+        }
+        activeSiren = new Audio('../assets/siren.mp3');
+        activeSiren.loop = true;
+        activeSiren.play().catch(function() {
             console.log('Audio play blocked by browser');
         });
-
         showAttackAlert(attack);
-
-        sirenTimeout = setTimeout(function() {
-            siren.pause();
-            siren.currentTime = 0;
-            closeAttackAlert();
-        }, 5000);
     }
 
     function showAttackAlert(attack) {
@@ -622,12 +619,13 @@ try {
         const popup = `
         <div id="attackAlertPopup" style="
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 340px;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
             background: #1e1e1e;
             border: 2px solid ${color};
-            border-radius: 10px;
+            border-radius: 0 0 10px 10px;
             padding: 16px 18px;
             z-index: 99999;
             box-shadow: 0 0 25px ${color}88;
@@ -669,9 +667,14 @@ try {
     }
 
     function closeAttackAlert() {
-        clearTimeout(sirenTimeout);
-        $('#attackAlertPopup').fadeOut(300, function() {
+        if (activeSiren) {
+            activeSiren.pause();
+            activeSiren.currentTime = 0;
+            activeSiren = null;
+        }
+        $('#attackAlertPopup').slideUp(300, function() {
             $(this).remove();
+            location.reload();
         });
     }
 
@@ -679,35 +682,36 @@ try {
     // AUTO REFRESH - har 15 second me check
     // =====================
     function checkNewAttacks() {
-    $('#refreshIndicator').addClass('refreshing');
-    $('#refreshText').text('Checking...');
+        $('#refreshIndicator').addClass('refreshing');
+        $('#refreshText').text('Checking...');
 
-    $.ajax({
-        url: '../api/get-latest-attack.php?last_id=' + lastAttackId,
-        dataType: 'json',
-        success: function(res) {
-            $('#refreshIndicator').removeClass('refreshing');
+        $.ajax({
+            url: '../api/get-latest-attack.php?last_id=' + lastAttackId,
+            dataType: 'json',
+            success: function(res) {
+                $('#refreshIndicator').removeClass('refreshing');
 
-            if (res.success && res.new_attack) {
-                lastAttackId = res.id;
+                if (res.success && res.new_attack) {
+                    lastAttackId = res.id;
+                    $('#refreshDot').css('background', '#dc3545');
+                    $('#refreshText').text('⚠️ New Attack!');
+                    playAlertAndNotify(res);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 5500);
+                } else {
+                    $('#refreshDot').css('background', '#28a745');
+                    $('#refreshText').text('Live · ' + new Date().toLocaleTimeString());
+                }
+            },
+            error: function() {
+                $('#refreshIndicator').removeClass('refreshing');
                 $('#refreshDot').css('background', '#dc3545');
-                $('#refreshText').text('⚠️ New Attack!');
-                playAlertAndNotify(res);
-                setTimeout(function() {
-                    location.reload();
-                }, 5500);
-            } else {
-                $('#refreshDot').css('background', '#28a745');
-                $('#refreshText').text('Live · ' + new Date().toLocaleTimeString());
+                $('#refreshText').text('Error');
             }
-        },
-        error: function() {
-            $('#refreshIndicator').removeClass('refreshing');
-            $('#refreshDot').css('background', '#dc3545');
-            $('#refreshText').text('Error');
-        }
-    });
-}
+        });
+    }
+
     setInterval(checkNewAttacks, 15000);
 
     // =====================
@@ -779,7 +783,6 @@ try {
         blockIP(currentModalIP, btn);
     }
 
-    // Website switching
     <?php if (isset($_GET['switch_website'])): ?>
         $.ajax({
             url: 'api/switch-website.php',
@@ -793,12 +796,11 @@ try {
         });
     <?php endif; ?>
 
-    // Slide in animation
     const alertStyle = document.createElement('style');
     alertStyle.textContent = `
         @keyframes slideInAlert {
-            from { opacity: 0; transform: translateX(100px); }
-            to { opacity: 1; transform: translateX(0); }
+            from { opacity: 0; transform: translateX(-50%) translateY(-100%); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
     `;
     document.head.appendChild(alertStyle);

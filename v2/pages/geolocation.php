@@ -113,23 +113,27 @@ try {
 
     // Get recent geolocated visitors
     $recentVisitors = $pdo->prepare("
-        SELECT 
-            ip,
-            real_ip,
-            country,
-            latitude,
-            longitude,
-            user_agent,
-            timestamp,
-            is_vpn,
-            is_proxy,
-            ASN,
-            ISP,
-            screen_resolution,
-            language,
-            timezone,
-            digital_dna
-        FROM logs 
+    SELECT 
+        ip,
+        real_ip,
+        country,
+        latitude,
+        longitude,
+        gps_latitude,
+        gps_longitude,
+        gps_accuracy,
+        location_source,
+        user_agent,
+        timestamp,
+        is_vpn,
+        is_proxy,
+        ASN,
+        ISP,
+        screen_resolution,
+        language,
+        timezone,
+        digital_dna
+    FROM logs
         WHERE $whereClause
         AND latitude IS NOT NULL 
         AND longitude IS NOT NULL
@@ -481,9 +485,19 @@ try {
                                 </td>
                                 <td>
                                     <small>
-                                        <?php echo htmlspecialchars($visitor['latitude']); ?>, 
-                                        <?php echo htmlspecialchars($visitor['longitude']); ?>
-                                    </small>
+    <?php if ($visitor['gps_latitude']): ?>
+        <span class="badge bg-success">📍 GPS</span><br>
+        <?php echo round($visitor['gps_latitude'], 4); ?>, 
+        <?php echo round($visitor['gps_longitude'], 4); ?>
+        <?php if ($visitor['gps_accuracy']): ?>
+            <br><small class="text-muted">±<?php echo round($visitor['gps_accuracy']); ?>m</small>
+        <?php endif; ?>
+    <?php else: ?>
+        <span class="badge bg-secondary">🌐 IP</span><br>
+        <?php echo htmlspecialchars($visitor['latitude']); ?>, 
+        <?php echo htmlspecialchars($visitor['longitude']); ?>
+    <?php endif; ?>
+</small>
                                 </td>
                                 <td>
                                     <small>
@@ -706,14 +720,26 @@ function viewVisitorDetails(visitor) {
     // Initialize map after modal is shown
     $('#visitorDetailsModal').on('shown.bs.modal', function() {
         if (visitor.latitude && visitor.longitude) {
-            const map = L.map('visitorMap').setView([visitor.latitude, visitor.longitude], 10);
+            // GPS available hai toh GPS use karo, otherwise IP-based
+const lat = visitor.gps_latitude || visitor.latitude;
+const lng = visitor.gps_longitude || visitor.longitude;
+const zoom = visitor.gps_latitude ? 16 : 10; // GPS pe zyada zoom
+const source = visitor.gps_latitude ? '📍 GPS (Exact)' : '🌐 IP-Based (Approx)';
+
+const map = L.map('visitorMap').setView([lat, lng], zoom);
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap'
             }).addTo(map);
             
             L.marker([visitor.latitude, visitor.longitude]).addTo(map)
-                .bindPopup(`<strong>${visitor.ip}</strong><br>${visitor.country}<br>${visitor.ISP || ''}`)
+                .bindPopup(`
+    <strong>${visitor.ip}</strong><br>
+    ${visitor.country}<br>
+    ${visitor.ISP || ''}<br>
+    <small>${source}</small>
+    ${visitor.gps_accuracy ? `<br><small>Accuracy: ±${Math.round(visitor.gps_accuracy)}m</small>` : ''}
+`)
                 .openPopup();
         }
     });
