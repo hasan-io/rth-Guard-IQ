@@ -1025,12 +1025,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                             
                             <div class="map-controls">
                                 <h6 class="mb-2"><i class="fas fa-sliders me-1"></i> Layer Controls</h6>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="showVisitors" checked>
-                                    <label class="form-check-label text-white" for="showVisitors">
-                                        <i class="fas fa-user text-success me-1"></i> Visitors
-                                    </label>
-                                </div>
+                                <hr style="border-color: #444; margin: 8px 0;">
+<small class="text-muted d-block mb-2">Heatmap Layer</small>
+<div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="heatmapAttacks">
+    <label class="form-check-label text-white" for="heatmapAttacks">
+        <i class="fas fa-fire text-danger me-1"></i> Attack Heat
+    </label>
+</div>
+<div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="heatmapVisitors">
+    <label class="form-check-label text-white" for="heatmapVisitors">
+        <i class="fas fa-fire text-success me-1"></i> Visitor Heat
+    </label>
+</div>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="showAttacks" checked>
                                     <label class="form-check-label text-white" for="showAttacks">
@@ -1376,7 +1384,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+    <!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>  <!-- ADD THIS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     // Map variables
     let map;
@@ -1385,7 +1397,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
     let attackLayer;
     let markerCluster;
     let modalMap = null;
-
+    let heatmapAttackLayer = null;
+    let heatmapVisitorLayer = null;
+    
     // GeoJSON data from PHP
     const geoJsonData = <?php echo json_encode($geoJsonData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT); ?>;
 
@@ -1809,6 +1823,33 @@ $current_page = basename($_SERVER['PHP_SELF']);
             }
         });
         
+        // Heatmap toggles
+$('#heatmapAttacks').change(function() {
+    const enabled = $(this).is(':checked');
+    toggleAttackHeatmap(enabled);
+    // Markers hide karo jab heatmap ON ho
+    if (enabled) {
+        markerCluster.removeLayer(attackLayer);
+        $('#showAttacks').prop('checked', false);
+    } else {
+        markerCluster.addLayer(attackLayer);
+        $('#showAttacks').prop('checked', true);
+    }
+});
+
+$('#heatmapVisitors').change(function() {
+    const enabled = $(this).is(':checked');
+    toggleVisitorHeatmap(enabled);
+    // Visitors markers hide karo jab heatmap ON ho
+    if (enabled) {
+        markerCluster.removeLayer(visitorLayer);
+        $('#showVisitors').prop('checked', false);
+    } else {
+        markerCluster.addLayer(visitorLayer);
+        $('#showVisitors').prop('checked', true);
+    }
+});
+
         // Sidebar toggle for mobile
         $('#sidebarToggle').click(function() {
             $('#sidebar').toggleClass('active');
@@ -1835,6 +1876,92 @@ $current_page = basename($_SERVER['PHP_SELF']);
         });
     });
 
+     // =====================
+// HEATMAP FUNCTIONS
+// =====================
+function buildHeatmapData(type) {
+    const points = [];
+    geoJsonData.features.forEach(function(feature) {
+        const coords = feature.geometry.coordinates;
+        const props = feature.properties;
+        if (props.type !== type) return;
+        if (!coords[1] || !coords[0]) return;
+
+        let intensity = 0.5;
+        if (type === 'attack') {
+            switch((props.severity || '').toLowerCase()) {
+                case 'critical': intensity = 1.0; break;
+                case 'high':     intensity = 0.8; break;
+                case 'medium':   intensity = 0.5; break;
+                default:         intensity = 0.3; break;
+            }
+            // More attacks = stronger heat
+            intensity = Math.min(1.0, intensity + (props.count || 1) * 0.05);
+        } else {
+            intensity = props.vpn || props.proxy ? 0.7 : 0.4;
+        }
+
+        points.push([coords[1], coords[0], intensity]);
+    });
+    return points;
+}
+
+function toggleAttackHeatmap(enabled) {
+    if (enabled) {
+        const points = buildHeatmapData('attack');
+        if (points.length === 0) {
+            alert('No attack location data available for heatmap.');
+            $('#heatmapAttacks').prop('checked', false);
+            return;
+        }
+        heatmapAttackLayer = L.heatLayer(points, {
+            radius: 35,
+            blur: 25,
+            maxZoom: 10,
+            max: 1.0,
+            gradient: {
+                0.0: '#0000ff',
+                0.3: '#00ffff',
+                0.5: '#ffff00',
+                0.8: '#ff8800',
+                1.0: '#ff0000'
+            }
+        }).addTo(map);
+    } else {
+        if (heatmapAttackLayer) {
+            map.removeLayer(heatmapAttackLayer);
+            heatmapAttackLayer = null;
+        }
+    }
+}
+
+function toggleVisitorHeatmap(enabled) {
+    if (enabled) {
+        const points = buildHeatmapData('visitor');
+        if (points.length === 0) {
+            alert('No visitor location data available for heatmap.');
+            $('#heatmapVisitors').prop('checked', false);
+            return;
+        }
+        heatmapVisitorLayer = L.heatLayer(points, {
+            radius: 30,
+            blur: 20,
+            maxZoom: 10,
+            max: 1.0,
+            gradient: {
+                0.0: '#003300',
+                0.4: '#00aa00',
+                0.7: '#88ff00',
+                1.0: '#ffffff'
+            }
+        }).addTo(map);
+    } else {
+        if (heatmapVisitorLayer) {
+            map.removeLayer(heatmapVisitorLayer);
+            heatmapVisitorLayer = null;
+        }
+    }
+}
     // Add CSS for animations
     const style = document.createElement('style');
     style.textContent = `
