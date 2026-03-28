@@ -3,6 +3,7 @@
 
 
 <?php include "blocked.php";?>
+<?php include "api/vpn.php";?>
 <?php include "security.php";?>
 <?php include "track.php";?>
 <?php include "dos.php";?>
