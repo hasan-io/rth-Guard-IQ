@@ -831,66 +831,77 @@ $current_page = basename($_SERVER['PHP_SELF']);
     </style>
 </head>
 <body>
+    
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3 class="mb-0">
-                <i class="fas fa-shield-alt text-primary me-2"></i>
-                <span class="fw-bold">Guard IQ</span>
-            </h3>
-            <p class="text-muted mb-0 small">Security Dashboard</p>
-        </div>
-        
-        <div class="sidebar-menu">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link active" href="<?php echo APP_URL; ?>/pages/summery.php">
-                        <i class="fas fa-home"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo APP_URL; ?>/pages/security-dashboard.php">
-                        <i class="fas fa-shield-alt"></i> Security
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo APP_URL; ?>/pages/web-security.php">
-                        <i class="fas fa-bug"></i> Attack Logs
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo APP_URL; ?>/pages/vpn-monitoring.php">
-                        <i class="fas fa-shield-virus"></i> VPN Monitor
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo APP_URL; ?>/pages/block-list.php">
-                        <i class="fas fa-ban"></i> Block List
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo APP_URL; ?>/pages/export.php">
-                        <i class="fas fa-archive"></i> Export logs
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo APP_URL; ?>/pages/user-tracker.php">
-                        <i class="fas fa-user-secret"></i> User Tracker
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo APP_URL; ?>/auth/settings.php">
-                        <i class="fas fa-cog"></i> Settings
-                    </a>
-                </li>
-                <li class="nav-item mt-4">
-                    <a class="nav-link text-danger" href="<?php echo APP_URL; ?>/auth/logout.php">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
-                </li>
-            </ul>
-        </div>
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <h3 class="mb-0">
+            <i class="fas fa-shield-alt text-primary me-2"></i>
+            <span class="fw-bold">Guard IQ</span>
+        </h3>
+        <p class="text-muted mb-0 small">Security Dashboard</p>
     </div>
+    
+    <div class="sidebar-menu">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/summery.php">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="<?php echo APP_URL; ?>/pages/security-dashboard.php">
+                    <i class="fas fa-shield-alt"></i> Security Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/web-security.php">
+                    <i class="fas fa-bug"></i> Attack Logs
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/vpn-monitoring.php">
+                    <i class="fas fa-shield-virus"></i> VPN Monitor
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/email-analysis.php">
+                    <i class="fa fa-address-card"></i> Header Analysis
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/block-list.php">
+                    <i class="fas fa-ban"></i> Block List
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/export.php">
+                    <i class="fas fa-archive"></i> Export Logs
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/user-tracker.php">
+                    <i class="fas fa-user-secret"></i> User Tracker
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/pages/geolocation.php">
+                    <i class="fas fa-map-marker-alt"></i> Geolocation
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo APP_URL; ?>/auth/settings.php">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </li>
+            <li class="nav-item mt-4">
+                <a class="nav-link text-danger" href="<?php echo APP_URL; ?>/auth/logout.php">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
