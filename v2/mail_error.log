@@ -1,0 +1,16 @@
+[29-Mar-2026 03:54:23 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function getDBConnection() in C:\xampp\htdocs\defsec\v2\api\send-alert.php:44
+Stack trace:
+#0 C:\xampp\htdocs\defsec\v2\api\collect.php(249): sendAttackAlert(484, 'hasansayyad912@...', 'apexx', Array)
+#1 {main}
+  thrown in C:\xampp\htdocs\defsec\v2\api\send-alert.php on line 44
+[29-Mar-2026 03:58:22 Europe/Berlin] Guard IQ: Alert email sent to hasansayyad912@gmail.com for attack ID 485
+[29-Mar-2026 04:00:32 Europe/Berlin] DEBUG: sendAttackAlert called - attack_id: 486, to: hasansayyad912@gmail.com
+[29-Mar-2026 04:00:37 Europe/Berlin] Guard IQ: Alert email sent to hasansayyad912@gmail.com for attack ID 486
+[29-Mar-2026 05:02:51 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function getDBConnection() in C:\xampp\htdocs\defsec\v2\api\send-alert.php:48
+Stack trace:
+#0 C:\xampp\htdocs\defsec\v2\api\collect.php(249): sendAttackAlert(487, 'hasansayyad912@...', 'apexx', Array)
+#1 {main}
+  thrown in C:\xampp\htdocs\defsec\v2\api\send-alert.php on line 48
+[29-Mar-2026 05:06:24 Europe/Berlin] Guard IQ: Alert email sent to hasansayyad912@gmail.com for attack ID 488
+[29-Mar-2026 05:13:14 Europe/Berlin] Guard IQ: Alert email sent to hasansayyad912@gmail.com for attack ID 489
+[29-Mar-2026 08:55:44 Asia/Kolkata] Guard IQ: Alert email sent to hasansayyad912@gmail.com for attack ID 490
